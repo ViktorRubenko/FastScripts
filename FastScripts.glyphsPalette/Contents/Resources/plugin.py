@@ -53,12 +53,12 @@ class FastScriptsPlugin(PalettePlugin):
             getattr(self.paletteView.group, "button{}_hide".format(_)).show(False)
             button_start += button_height + 5
 
-        self.paletteView.group.add_button = Button(
-            (-35, -15, 30, 10), "add", callback=self.add_button, sizeStyle="mini"
+        self.paletteView.group.add_button = SquareButton(
+            (-45, -15, 40, 10), "Add", callback=self.add_button, sizeStyle="mini"
         )
 
-        self.paletteView.group.save_button = Button(
-            (5, -15, 30, 10), "save", callback=self.save_scripts, sizeStyle="mini"
+        self.paletteView.group.save_button = SquareButton(
+            (5, -15, 40, 10), "Save", callback=self.save_scripts, sizeStyle="mini"
         )
 
         self.load_scripts()
@@ -90,6 +90,7 @@ class FastScriptsPlugin(PalettePlugin):
                 }
             )
         for button_index, script_path in self.button_scripts.items():
+            self.free_buttons.remove(button_index)
             self.init_button(button_index, script_path)
 
     @objc.python_method

@@ -117,7 +117,8 @@ class FastScriptsPlugin(PalettePlugin):
                 return
             if not self.init_button(button_index, filepath):
                 heapq.heappush(self.free_buttons, button_index)
-                Message("Can't find scripts MenuTitle. Is the script correct?")
+                print("{}\nCan't find scripts MenuTitle".format(filepath))
+                Glyphs.showMacroWindow()
 
     @objc.python_method
     def init_button(self, button_index, script_path):

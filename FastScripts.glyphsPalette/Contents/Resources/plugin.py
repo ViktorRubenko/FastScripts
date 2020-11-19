@@ -14,7 +14,7 @@ from vanilla import *
 BASEDIR_ = os.path.dirname(__file__)
 
 
-class FastScriptsPlugin(PalettePlugin):
+class FastScripts(PalettePlugin):
     @objc.python_method
     def settings(self):
         self.name = Glyphs.localize({"en": "FastScripts"})

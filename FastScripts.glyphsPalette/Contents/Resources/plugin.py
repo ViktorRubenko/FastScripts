@@ -89,15 +89,18 @@ class FastScripts(PalettePlugin):
             button_start += button_height + 5
 
         self.paletteView.group.add_button = SquareButton(
-            (-45, -15, 40, 10), "Add", callback=self.add_script, sizeStyle="mini"
+            (-50, -15, 45, 10), "Add", callback=self.add_script, sizeStyle="mini"
         )
 
         self.paletteView.group.settings_button = SquareButton(
-            (60, -15, 45, 10), "Settings", callback=self.open_settings, sizeStyle="mini"
+            (55, -15, -55, 10),
+            "Settings",
+            callback=self.open_settings,
+            sizeStyle="mini",
         )
 
         self.paletteView.group.save_button = SquareButton(
-            (5, -15, 40, 10), "Save", callback=self.save_data, sizeStyle="mini"
+            (5, -15, 45, 10), "Save", callback=self.save_data, sizeStyle="mini"
         )
         if self.button_scripts:
             self.load_scripts()

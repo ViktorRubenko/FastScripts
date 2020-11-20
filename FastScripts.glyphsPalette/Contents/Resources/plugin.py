@@ -23,6 +23,7 @@ class SettingsWindow:
         self.w.quantity_edittext = EditText(
             (10, 25, 50, 22),
             callback=None,
+            placeholder="1..20",
         )
         self.w.ok_button = Button(
             (70, 25, -10, 22),
@@ -33,10 +34,15 @@ class SettingsWindow:
 
     def update_settings(self, sender, plugin):
         try:
-            plugin.quantity = int(self.w.quantity_edittext.get())
-            plugin.save_data()
-            Message("Reload Glyphs.app to apply settings")
-            self.w.close()
+            quantity = quantity = int(self.w.quantity_edittext.get())
+            if 1 <= quantity <= 20:
+                plugin.quantity = quantity
+                plugin.save_data()
+                Message("Reload Glyphs.app to apply settings")
+                self.w.close()
+            else:
+                print("Number of scripts must in [1..20] range!")
+                Glyphs.showMacroWindow()
         except Exception as e:
             print(str(e))
             Glyphs.showMacroWindow()

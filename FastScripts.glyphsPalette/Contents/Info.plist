@@ -4,8 +4,6 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleDisplayName</key>
-	<string>FastScripts</string>
 	<key>CFBundleExecutable</key>
 	<string>plugin</string>
 	<key>CFBundleIdentifier</key>
@@ -14,10 +12,10 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>FastScripts</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.0</string> <!-- 1.0 -->
+	<key>CFBundleVersion</key>
+	<string>1</string> <!-- 123 -->
 	<key>UpdateFeedURL</key>
 	<string>https://github.com/ViktorRubenko/FastScripts/blob/master/FastScripts.glyphsPalette/Contents/Info.plist</string>
 	<key>productPageURL</key>

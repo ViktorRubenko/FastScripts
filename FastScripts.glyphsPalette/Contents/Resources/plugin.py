@@ -14,20 +14,49 @@ from vanilla import *
 BASEDIR_ = os.path.dirname(__file__)
 
 
+class SettingsWindow:
+    def __init__(self, plugin):
+        self.w = FloatingWindow((120, 55))
+        self.w.quantity_textbox = TextBox(
+            (10, 10, -10, 15), "Number of scripts:", sizeStyle="mini"
+        )
+        self.w.quantity_edittext = EditText(
+            (10, 25, 50, 22),
+            callback=None,
+        )
+        self.w.ok_button = Button(
+            (70, 25, -10, 22),
+            "OK",
+            callback=lambda sender, plugin=plugin: self.update_settings(sender, plugin),
+        )
+        self.w.open()
+
+    def update_settings(self, sender, plugin):
+        try:
+            plugin.quantity = int(self.w.quantity_edittext.get())
+            plugin.save_data()
+            Message("Reload Glyphs.app to apply settings")
+            self.w.close()
+        except Exception as e:
+            print(str(e))
+            Glyphs.showMacroWindow()
+
+
 class FastScripts(PalettePlugin):
     @objc.python_method
     def settings(self):
         self.name = Glyphs.localize({"en": "FastScripts"})
-        self.free_buttons = list(range(5))
+        self.quantity = 5
         self.button_scripts = {}
-        heapq.heapify(self.free_buttons)
+        self.load_data()
+        self.free_buttons = list(range(self.quantity))
         button_start = 0
         button_height = 10
-        width, height = 150, 90
+        width, height = 150, self.quantity * (button_height + 5) + 15
         self.paletteView = Window((width, height))
         self.paletteView.group = Group((0, 0, width, height))
 
-        for _ in range(5):
+        for _ in range(self.quantity):
             setattr(
                 self.paletteView.group,
                 "button{}".format(_),
@@ -54,14 +83,18 @@ class FastScripts(PalettePlugin):
             button_start += button_height + 5
 
         self.paletteView.group.add_button = SquareButton(
-            (-45, -15, 40, 10), "Add", callback=self.add_button, sizeStyle="mini"
+            (-45, -15, 40, 10), "Add", callback=self.add_script, sizeStyle="mini"
+        )
+
+        self.paletteView.group.settings_button = SquareButton(
+            (60, -15, 45, 10), "Settings", callback=self.open_settings, sizeStyle="mini"
         )
 
         self.paletteView.group.save_button = SquareButton(
-            (5, -15, 40, 10), "Save", callback=self.save_scripts, sizeStyle="mini"
+            (5, -15, 40, 10), "Save", callback=self.save_data, sizeStyle="mini"
         )
-
-        self.load_scripts()
+        if self.button_scripts:
+            self.load_scripts()
         self.dialog = self.paletteView.group.getNSView()
 
     @objc.python_method
@@ -74,21 +107,34 @@ class FastScripts(PalettePlugin):
             self.paletteView.group.add_button.enable(True)
 
     @objc.python_method
-    def save_scripts(self, sender):
-        with open(os.path.join(BASEDIR_, "button_scripts.json"), "w") as json_file:
-            json.dump(self.button_scripts, json_file, indent=4)
+    def open_settings(self, sender):
+        SettingsWindow(self)
+
+    @objc.python_method
+    def load_data(self):
+        filepath = os.path.join(BASEDIR_, "data.json")
+        if os.path.exists(filepath):
+            with open(filepath, "r") as json_file:
+                data = json.load(json_file)
+            self.quantity = data.get("quantity", 5)
+            button_scripts = data.get("button_scripts", {})
+            self.button_scripts = {
+                int(id_str): script_path
+                for id_str, script_path in button_scripts.items()
+                if int(id_str) < self.quantity
+            }
+
+    @objc.python_method
+    def save_data(self, sender=None):
+        with open(os.path.join(BASEDIR_, "data.json"), "w") as json_file:
+            json.dump(
+                {"quantity": self.quantity, "button_scripts": self.button_scripts},
+                json_file,
+                indent=4,
+            )
 
     @objc.python_method
     def load_scripts(self):
-        if not os.path.exists(os.path.join(BASEDIR_, "button_scripts.json")):
-            return
-        with open(os.path.join(BASEDIR_, "button_scripts.json"), "r") as json_file:
-            self.button_scripts.update(
-                {
-                    int(id_str): script_path
-                    for id_str, script_path in json.load(json_file).items()
-                }
-            )
         for button_index, script_path in self.button_scripts.items():
             self.free_buttons.remove(button_index)
             self.init_button(button_index, script_path)
@@ -103,22 +149,37 @@ class FastScripts(PalettePlugin):
             Glyphs.showMacroWindow()
 
     @objc.python_method
-    def add_button(self, sender):
-        if self.free_buttons:
-            button_index = heapq.heappop(self.free_buttons)
-            try:
-                filepath = GetOpenFile(
-                    path="~/Library/Application Support/Glyphs/Scripts",
-                    filetypes=["py"],
+    def add_script(self, sender):
+        try:
+            filepaths = GetOpenFile(
+                path="~/Library/Application Support/Glyphs/Scripts",
+                filetypes=["py"],
+                allowsMultipleSelection=True,
+            )
+        except:
+            filepaths = GetOpenFile(
+                filetypes=["py"],
+                allowsMultipleSelection=True,
+            )
+        if not filepaths:
+            return
+        if len(filepaths) > len(self.free_buttons):
+            print(
+                "{} scripts were selected for {} buttons".format(
+                    len(filepaths),
+                    len(self.free_buttons),
                 )
-            except:
-                filepath = GetOpenFile(filetypes=["py"])
-            if not filepath:
-                return
-            if not self.init_button(button_index, filepath):
-                heapq.heappush(self.free_buttons, button_index)
-                print("{}\nCan't find scripts MenuTitle".format(filepath))
-                Glyphs.showMacroWindow()
+            )
+            Glyphs.showMacroWindow()
+        for filepath in filepaths:
+            if self.free_buttons:
+                button_index = heapq.heappop(self.free_buttons)
+                if not self.init_button(button_index, filepath):
+                    heapq.heappush(self.free_buttons, button_index)
+                    print("{}\nCan't find scripts MenuTitle".format(filepath))
+                    Glyphs.showMacroWindow()
+            else:
+                break
 
     @objc.python_method
     def init_button(self, button_index, script_path):

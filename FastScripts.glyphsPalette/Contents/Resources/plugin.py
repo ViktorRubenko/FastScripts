@@ -138,6 +138,8 @@ class FastScripts(PalettePlugin):
         for button_index, script_path in self.button_scripts.items():
             self.free_buttons.remove(button_index)
             self.init_button(button_index, script_path)
+        if not self.free_buttons:
+            self.paletteView.group.add_button.enable(False)
 
     @objc.python_method
     @staticmethod
@@ -180,6 +182,8 @@ class FastScripts(PalettePlugin):
                     Glyphs.showMacroWindow()
             else:
                 break
+        if not self.free_buttons:
+            self.paletteView.group.add_button.enable(False)
 
     @objc.python_method
     def init_button(self, button_index, script_path):
@@ -220,6 +224,4 @@ class FastScripts(PalettePlugin):
             button.setTitle(menu_title)
             button.show(True)
             button_hide.show(True)
-            if not self.free_buttons:
-                self.paletteView.group.add_button.enable(False)
             return 1

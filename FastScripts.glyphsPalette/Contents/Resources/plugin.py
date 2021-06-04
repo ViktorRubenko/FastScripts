@@ -3,203 +3,141 @@ from __future__ import division, print_function, unicode_literals
 import objc
 from GlyphsApp import *
 from GlyphsApp.plugins import *
+from GlyphsApp import GSMouseOverButton, GSScriptingHandler
+from AppKit import NSButton, NSBezelStyleRegularSquare, NSMiniControlSize, NSShadowlessSquareBezelStyle, NSCircularBezelStyle, \
+    NSLayoutConstraint, NSLayoutAttributeHeight, NSLayoutAttributeWidth, NSLayoutAttributeTop, NSLayoutAttributeLeading, NSLayoutAttributeTrailing, NSLayoutAttributeBottom, NSLayoutRelationEqual
 import re
 import io
-import os
-import heapq
-import json
-from vanilla import *
 
+try:
+    scriptsPath = GSGlyphsInfo.applicationSupportPath() + "/Scripts" # Glyphs 3
+except:
+    scriptsPath = GSGlyphsInfo.applicationSupportFolder() + "/Scripts" # Glyphs 2
 
-BASEDIR_ = os.path.dirname(__file__)
+button_height = 14
+button_gap = 4
+defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
+notificationName = "com.ViktorRubenko.FastScripts.reload"
 
+def newButton(frame, title, action, target):
+    new_button = NSButton.alloc().initWithFrame_(frame)
+    new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
+    new_button.setControlSize_(NSMiniControlSize)
+    new_button.setTitle_(title)
+    new_button.setAction_(action)
+    new_button.setTarget_(target)
+    new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)
+    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(new_button, NSLayoutAttributeHeight, NSLayoutRelationEqual, None, 0, 1.0, button_height)
+    new_button.addConstraint_(constraint)
+    return new_button
 
-class SettingsWindow:
-    def __init__(self, plugin):
-        self.w = FloatingWindow((120, 55))
-        self.w.quantity_textbox = TextBox(
-            (10, 10, -10, 15), "Number of scripts:", sizeStyle="mini"
-        )
-        self.w.quantity_edittext = EditText(
-            (10, 25, 50, 22),
-            callback=None,
-            placeholder="1..20",
-        )
-        self.w.ok_button = Button(
-            (70, 25, -10, 22),
-            "OK",
-            callback=lambda sender, plugin=plugin: self.update_settings(sender, plugin),
-        )
-        self.w.open()
-
-    def update_settings(self, sender, plugin):
-        try:
-            quantity = quantity = int(self.w.quantity_edittext.get())
-            if 1 <= quantity <= 20:
-                plugin.quantity = quantity
-                plugin.save_data()
-                Message("Reload Glyphs.app to apply settings")
-                self.w.close()
-            else:
-                print("Number of scripts must in [1..20] range!")
-                Glyphs.showMacroWindow()
-        except Exception as e:
-            print(str(e))
-            Glyphs.showMacroWindow()
-
+def removeButton(frame, imageName, action, target):
+    new_button = GSMouseOverButton.alloc().initWithFrame_(frame)
+    new_button.setBezelStyle_(NSCircularBezelStyle)
+    new_button.setBordered_(False)
+    new_button.setImage_(NSImage.imageNamed_(imageName))
+    new_button.setControlSize_(NSMiniControlSize)
+    new_button.setTitle_("")
+    new_button.setAction_(action)
+    new_button.setTarget_(target)
+    new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)
+    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(new_button, NSLayoutAttributeHeight, NSLayoutRelationEqual, None, 0, 1.0, 18)
+    new_button.addConstraint_(constraint)
+    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(new_button, NSLayoutAttributeWidth, NSLayoutRelationEqual, None, 0, 1.0, 18)
+    new_button.addConstraint_(constraint)
+    return new_button
 
 class FastScripts(PalettePlugin):
     @objc.python_method
     def settings(self):
         self.name = Glyphs.localize({"en": "FastScripts"})
-        self.quantity = 5
-        self.button_scripts = {}
+        self.button_scripts = []
+        self.dialog = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 150, 100))
+        self.dialog.setTranslatesAutoresizingMaskIntoConstraints_(False)
+        self.heightConstraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeHeight, NSLayoutRelationEqual, None, 0, 1.0, 0)
+        self.dialog.addConstraint_(self.heightConstraint)
+        self.buttonContainer = NSView.alloc().initWithFrame_(NSMakeRect(0, 15, 150, 85))
+        self.buttonContainer.setTranslatesAutoresizingMaskIntoConstraints_(False)
+        self.dialog.addSubview_(self.buttonContainer)
+        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeTop, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeTop, 1.0, 0)
+        self.dialog.addConstraint_(constaint)
+        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeLeading, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeLeading, 1.0, 0)
+        self.dialog.addConstraint_(constaint)
+        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeTrailing, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeTrailing, 1.0, 0)
+        self.dialog.addConstraint_(constaint)
+        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeBottom, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeBottom, 1.0, 15)
+        self.dialog.addConstraint_(constaint)
+        self.add_button = removeButton(NSMakeRect(8, 0, 18, 18), "NSAddTemplate", self.addScript_, self, )
+        self.dialog.addSubview_(self.add_button)
+        self.setupButtons_()
+        NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(self, self.setupButtons_, notificationName, None)
+
+    def __del__(self):
+        NSNotificationCenter.defaultCenter().removeObserver_name_object_(self, notificationName, None)
+
+    def setupButtons_(self, notification=None):
         self.load_data()
-        self.free_buttons = list(range(self.quantity))
         button_start = 0
-        button_height = 10
-        width, height = 150, self.quantity * (button_height + 5) + 15
-        self.paletteView = Window((width, height))
-        self.paletteView.group = Group((0, 0, width, height))
-
-        for _ in range(self.quantity):
-            setattr(
-                self.paletteView.group,
-                "button{}".format(_),
-                SquareButton(
-                    (10, button_start, -35, button_height),
-                    "",
-                    callback=None,
-                    sizeStyle="mini",
-                ),
-            )
-            button = getattr(self.paletteView.group, "button{}".format(_))
-            button.show(False)
-            setattr(
-                self.paletteView.group,
-                "button{}_hide".format(_),
-                SquareButton(
-                    (-35, button_start, 30, button_height),
-                    "X",
-                    callback=lambda sender, id=_: self.hide(id),
-                    sizeStyle="mini",
-                ),
-            )
-            getattr(self.paletteView.group, "button{}_hide".format(_)).show(False)
-            button_start += button_height + 5
-
-        self.paletteView.group.add_button = SquareButton(
-            (-50, -15, 45, 10), "Add", callback=self.add_script, sizeStyle="mini"
-        )
-
-        self.paletteView.group.settings_button = SquareButton(
-            (55, -15, -55, 10),
-            "Settings",
-            callback=self.open_settings,
-            sizeStyle="mini",
-        )
-
-        self.paletteView.group.save_button = SquareButton(
-            (5, -15, 45, 10), "Save", callback=self.save_data, sizeStyle="mini"
-        )
-        if self.button_scripts:
-            self.load_scripts()
-        self.dialog = self.paletteView.group.getNSView()
-
-    @objc.python_method
-    def hide(self, id):
-        heapq.heappush(self.free_buttons, id)
-        getattr(self.paletteView.group, "button{}".format(id)).show(False)
-        getattr(self.paletteView.group, "button{}_hide".format(id)).show(False)
-        self.button_scripts.pop(id)
-        if not self.paletteView.group.add_button.isEnabled():
-            self.paletteView.group.add_button.enable(True)
-
-    @objc.python_method
-    def open_settings(self, sender):
-        SettingsWindow(self)
+        quantity = len(self.button_scripts)
+        width, height = 160, quantity * (button_height + button_gap)
+        self.heightConstraint.setConstant_(height + 15)
+        if quantity == 0:
+            return
+        self.buttonContainer.setSubviews_([])
+        for button_script in self.button_scripts:
+            script_button = newButton(NSMakeRect(8, height - button_start - button_height, width - 26, button_height), "_", self.runScriptCallback_, self)
+            self.init_button(script_button, button_script)
+            self.buttonContainer.addSubview_(script_button)
+            remove_button = removeButton(NSMakeRect(width - 16, height - button_start - 17, 18, 18), "NSRemoveTemplate", self.removeScriptCallback_, self, )
+            remove_button.setRepresentedObject_(button_script)
+            self.buttonContainer.addSubview_(remove_button)
+            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(script_button, NSLayoutAttributeLeading, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeLeading, 1.0, 8)
+            self.buttonContainer.addConstraint_(constaint)
+            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(script_button, NSLayoutAttributeTrailing, NSLayoutRelationEqual, remove_button, NSLayoutAttributeLeading, 1.0, -2)
+            self.buttonContainer.addConstraint_(constaint)
+            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(remove_button, NSLayoutAttributeTrailing, NSLayoutRelationEqual, self.buttonContainer, NSLayoutAttributeTrailing, 1.0, -8)
+            self.buttonContainer.addConstraint_(constaint)
+            button_start += button_height + button_gap
+        self.dialog.invalidateIntrinsicContentSize()
 
     @objc.python_method
     def load_data(self):
-        filepath = os.path.join(BASEDIR_, "data.json")
-        if os.path.exists(filepath):
-            with open(filepath, "r") as json_file:
-                data = json.load(json_file)
-            self.quantity = data.get("quantity", 5)
-            button_scripts = data.get("button_scripts", {})
-            self.button_scripts = {
-                int(id_str): script_path
-                for id_str, script_path in button_scripts.items()
-                if int(id_str) < self.quantity
-            }
+        self.button_scripts = list(Glyphs.defaults[defaultsName])
 
     @objc.python_method
-    def save_data(self, sender=None):
-        with open(os.path.join(BASEDIR_, "data.json"), "w") as json_file:
-            json.dump(
-                {"quantity": self.quantity, "button_scripts": self.button_scripts},
-                json_file,
-                indent=4,
-            )
+    def save_data(self):
+        Glyphs.defaults[defaultsName] = self.button_scripts
 
     @objc.python_method
-    def load_scripts(self):
-        for button_index, script_path in self.button_scripts.items():
-            self.free_buttons.remove(button_index)
-            self.init_button(button_index, script_path)
-        if not self.free_buttons:
-            self.paletteView.group.add_button.enable(False)
+    def dataHasChanged(self):
+        self.save_data()
+        NSNotificationCenter.defaultCenter().postNotificationName_object_(notificationName, None)
 
-    @objc.python_method
-    @staticmethod
-    def exec_code(filepath, code):
-        try:
-            exec(code, globals())
-        except Exception as e:
-            print(str(e))
-            Glyphs.showMacroWindow()
+    def runScriptCallback_(self, button):
+        scriptPath = button.representedObject()
+        GSScriptingHandler.runMacroFile_(scriptPath)
 
-    @objc.python_method
-    def add_script(self, sender):
+    def removeScriptCallback_(self, button):
+        self.button_scripts.remove(button.representedObject())
+        self.dataHasChanged()
+
+    def addScript_(self, sender):
         try:
             filepaths = GetOpenFile(
-                path="~/Library/Application Support/Glyphs/Scripts",
+                path=scriptsPath,
                 filetypes=["py"],
                 allowsMultipleSelection=True,
             )
         except:
-            filepaths = GetOpenFile(
-                filetypes=["py"],
-                allowsMultipleSelection=True,
-            )
-        if not filepaths:
+            import traceback
+            print(traceback.format_exc())
+        if not filepaths or len(filepaths) == 0:
             return
-        if len(filepaths) > len(self.free_buttons):
-            print(
-                "{} scripts were selected for {} buttons".format(
-                    len(filepaths),
-                    len(self.free_buttons),
-                )
-            )
-            Glyphs.showMacroWindow()
-        for filepath in filepaths:
-            if self.free_buttons:
-                button_index = heapq.heappop(self.free_buttons)
-                if not self.init_button(button_index, filepath):
-                    heapq.heappush(self.free_buttons, button_index)
-                    print("{}\nCan't find scripts MenuTitle".format(filepath))
-                    Glyphs.showMacroWindow()
-            else:
-                break
-        if not self.free_buttons:
-            self.paletteView.group.add_button.enable(False)
+        self.button_scripts.extend(filepaths)
+        self.dataHasChanged()
 
     @objc.python_method
-    def init_button(self, button_index, script_path):
-        button = getattr(self.paletteView.group, "button{}".format(button_index))
-        button_hide = getattr(
-            self.paletteView.group, "button{}_hide".format(button_index)
-        )
+    def init_button(self, button, script_path):
         with io.open(script_path, "r", encoding="utf-8") as f:
             code = f.read()
 
@@ -227,10 +165,6 @@ class FastScripts(PalettePlugin):
                     code[line_index] = line.replace(rep, "", 1)
             code = "\n".join(code)
 
-            self.button_scripts[button_index] = script_path
             menu_title = menu_title[0]
-            button._setCallback(lambda sender: self.exec_code(script_path, code))
-            button.setTitle(menu_title)
-            button.show(True)
-            button_hide.show(True)
-            return 1
+            button.setRepresentedObject_(script_path)
+            button.setTitle_(menu_title)

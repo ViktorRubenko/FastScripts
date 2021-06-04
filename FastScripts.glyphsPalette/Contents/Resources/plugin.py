@@ -16,6 +16,8 @@ except:
 
 button_height = 14
 button_gap = 4
+defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
+notificationName = "com.ViktorRubenko.FastScripts.reload"
 
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
@@ -50,7 +52,6 @@ class FastScripts(PalettePlugin):
     def settings(self):
         self.name = Glyphs.localize({"en": "FastScripts"})
         self.button_scripts = []
-        self.load_data()
         self.dialog = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 150, 100))
         self.dialog.setTranslatesAutoresizingMaskIntoConstraints_(False)
         self.heightConstraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(self.dialog, NSLayoutAttributeHeight, NSLayoutRelationEqual, None, 0, 1.0, 0)
@@ -68,9 +69,14 @@ class FastScripts(PalettePlugin):
         self.dialog.addConstraint_(constaint)
         self.add_button = removeButton(NSMakeRect(8, 0, 18, 18), "NSAddTemplate", self.addScript_, self, )
         self.dialog.addSubview_(self.add_button)
-        self.setup_buttons()
+        self.setupButtons_()
+        NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(self, self.setupButtons_, notificationName, None)
 
-    def setup_buttons(self):
+    def __del__(self):
+        NSNotificationCenter.defaultCenter().removeObserver_name_object_(self, notificationName, None)
+
+    def setupButtons_(self, notification=None):
+        self.load_data()
         button_start = 0
         quantity = len(self.button_scripts)
         width, height = 160, quantity * (button_height + button_gap)
@@ -96,20 +102,24 @@ class FastScripts(PalettePlugin):
 
     @objc.python_method
     def load_data(self):
-        self.button_scripts = list(Glyphs.defaults["com.ViktorRubenko.FastScripts.button_scripts"])
+        self.button_scripts = list(Glyphs.defaults[defaultsName])
+
     @objc.python_method
     def save_data(self):
-        Glyphs.defaults["com.ViktorRubenko.FastScripts.button_scripts"] = self.button_scripts
+        Glyphs.defaults[defaultsName] = self.button_scripts
+
+    @objc.python_method
+    def dataHasChanged(self):
+        self.save_data()
+        NSNotificationCenter.defaultCenter().postNotificationName_object_(notificationName, None)
 
     def runScriptCallback_(self, button):
         scriptPath = button.representedObject()
         GSScriptingHandler.runMacroFile_(scriptPath)
 
     def removeScriptCallback_(self, button):
-        print("__hide", button)
         self.button_scripts.remove(button.representedObject())
-        self.save_data()
-        self.setup_buttons()
+        self.dataHasChanged()
 
     def addScript_(self, sender):
         try:
@@ -124,8 +134,7 @@ class FastScripts(PalettePlugin):
         if not filepaths or len(filepaths) == 0:
             return
         self.button_scripts.extend(filepaths)
-        self.save_data()
-        self.setup_buttons()
+        self.dataHasChanged()
 
     @objc.python_method
     def init_button(self, button, script_path):
@@ -159,4 +168,3 @@ class FastScripts(PalettePlugin):
             menu_title = menu_title[0]
             button.setRepresentedObject_(script_path)
             button.setTitle_(menu_title)
-            return 1

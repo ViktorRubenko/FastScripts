@@ -3,8 +3,7 @@ from __future__ import division, print_function, unicode_literals
 import objc
 from GlyphsApp import *
 from GlyphsApp.plugins import *
-from GlyphsApp import GSMouseOverButton, GSScriptingHandler
-from AppKit import NSButton, NSBezelStyleRegularSquare, NSMiniControlSize, NSShadowlessSquareBezelStyle, NSCircularBezelStyle, \
+from AppKit import NSButton, NSMiniControlSize, NSShadowlessSquareBezelStyle, NSCircularBezelStyle, \
     NSLayoutConstraint, NSLayoutAttributeHeight, NSLayoutAttributeWidth, NSLayoutAttributeTop, NSLayoutAttributeLeading, NSLayoutAttributeTrailing, NSLayoutAttributeBottom, NSLayoutRelationEqual
 import re
 import io
@@ -32,7 +31,7 @@ def newButton(frame, title, action, target):
     return new_button
 
 def removeButton(frame, imageName, action, target):
-    new_button = GSMouseOverButton.alloc().initWithFrame_(frame)
+    new_button = NSButton.alloc().initWithFrame_(frame)
     new_button.setBezelStyle_(NSCircularBezelStyle)
     new_button.setBordered_(False)
     new_button.setImage_(NSImage.imageNamed_(imageName))
@@ -102,7 +101,10 @@ class FastScripts(PalettePlugin):
 
     @objc.python_method
     def load_data(self):
-        self.button_scripts = list(Glyphs.defaults[defaultsName])
+        try:
+            self.button_scripts = list(Glyphs.defaults[defaultsName])
+        except:
+            self.button_scripts = []
 
     @objc.python_method
     def save_data(self):
@@ -114,8 +116,8 @@ class FastScripts(PalettePlugin):
         NSNotificationCenter.defaultCenter().postNotificationName_object_(notificationName, None)
 
     def runScriptCallback_(self, button):
-        scriptPath = button.representedObject()
-        GSScriptingHandler.runMacroFile_(scriptPath)
+        code = button.representedObject()
+        eval(code)
 
     def removeScriptCallback_(self, button):
         self.button_scripts.remove(button.representedObject())
@@ -166,5 +168,5 @@ class FastScripts(PalettePlugin):
             code = "\n".join(code)
 
             menu_title = menu_title[0]
-            button.setRepresentedObject_(script_path)
+            button.setRepresentedObject_(code)
             button.setTitle_(menu_title)

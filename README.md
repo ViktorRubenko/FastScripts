@@ -5,23 +5,21 @@
 
 ## Installation
 
+#### Recommend:
+Install via plugin manager window
+
+#### Manually:
 Clone this repository with git or download .zip manually
 
-***For Glyphs 2 change branch to Glyphs2!***
+### ***For Glyphs 2 change branch to Glyphs2!***
 
 ```
-git clone https://github.com/simoncozens/GlyphsGit.git
+git clone https://github.com/ViktorRubenko/FastScripts.git
 ```
 Double click the plugin or move it into the Glyphs plugin folder. Reload glyphs.
 
 ## Usage
 
-* Settins button - Set the required number of scripts (from 1 to 20), then restart Glyphs to apply the changes
+* Plus button - Add the required script (.py file)
+* Minus button - Remove the corresponding script
 
-* Add button - Add the required script (.py file)
-
-* Save button - Save the current set of scripts
-
-## Issues
-
-After changing the number of scripts, a restart of Glyphs is required. Perhaps this problem can be solved through autolayouts, but so far this has not been successful.

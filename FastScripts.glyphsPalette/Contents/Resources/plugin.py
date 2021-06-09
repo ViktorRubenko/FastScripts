@@ -7,6 +7,7 @@ from AppKit import NSButton, NSMiniControlSize, NSShadowlessSquareBezelStyle, NS
     NSLayoutConstraint, NSLayoutAttributeHeight, NSLayoutAttributeWidth, NSLayoutAttributeTop, NSLayoutAttributeLeading, NSLayoutAttributeTrailing, NSLayoutAttributeBottom, NSLayoutRelationEqual
 import re
 import io
+import os
 
 try:
     scriptsPath = GSGlyphsInfo.applicationSupportPath() + "/Scripts" # Glyphs 3
@@ -102,7 +103,7 @@ class FastScripts(PalettePlugin):
     @objc.python_method
     def load_data(self):
         try:
-            self.button_scripts = list(Glyphs.defaults[defaultsName])
+            self.button_scripts = list(sp for sp in Glyphs.defaults[defaultsName] if os.path.exists(sp))
         except:
             self.button_scripts = []
 

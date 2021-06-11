@@ -1,5 +1,6 @@
 # FastScripts
 ## Glyphs plugin for fast favorite scripts run from side panel
+### Support both version 2 and 3
 
 ![alt text](https://github.com/ViktorRubenko/FastScripts/blob/master/FastScriptsScreenshot.png?raw=true)
 
@@ -10,8 +11,6 @@ Install via plugin manager window
 
 #### Manually:
 Clone this repository with git or download .zip manually
-
-### ***For Glyphs 2 change branch to Glyphs2!***
 
 ```
 git clone https://github.com/ViktorRubenko/FastScripts.git

@@ -103,7 +103,9 @@ class FastScripts(PalettePlugin):
 
     @objc.python_method
     def load_data(self):
-        self.button_scripts = list(sp for sp in Glyphs.defaults[defaultsName] if os.path.exits(sp))
+        self.button_scripts = list(
+            sp for sp in Glyphs.defaults[defaultsName] if os.path.exists(sp)
+        )
 
     @objc.python_method
     def save_data(self):

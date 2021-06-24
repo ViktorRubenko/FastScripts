@@ -264,7 +264,8 @@ class FastScripts(PalettePlugin):
     def runScriptCallback_(self, button):
         if int(Glyphs.versionNumber) == 3:
             scriptPath = button.representedObject()
-            GSScriptingHandler.runMacroFile_(scriptPath)
+            scriptHandler = GSScriptingHandler.alloc()
+            scriptHandler.runMacroFile_(scriptPath)
         else:
             code = button.representedObject()
             exec(code, globals())

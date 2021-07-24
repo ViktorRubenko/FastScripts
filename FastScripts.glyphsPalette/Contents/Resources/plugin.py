@@ -104,7 +104,6 @@ class FastScripts(PalettePlugin):
         self.button_scripts = []
         self.dialog = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 150, 100))
         self.dialog.setTranslatesAutoresizingMaskIntoConstraints_(False)
-        print(self.dialog.superview())
         self.heightConstraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
             self.dialog,
             NSLayoutAttributeHeight,

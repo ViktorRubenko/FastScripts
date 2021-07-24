@@ -19,6 +19,7 @@ from AppKit import (
     NSLayoutAttributeTrailing,
     NSLayoutAttributeBottom,
     NSLayoutRelationEqual,
+    NSLineBreakByTruncatingTail,
 )
 import re
 import io
@@ -103,6 +104,7 @@ class FastScripts(PalettePlugin):
         self.button_scripts = []
         self.dialog = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 150, 100))
         self.dialog.setTranslatesAutoresizingMaskIntoConstraints_(False)
+        print(self.dialog.superview())
         self.heightConstraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
             self.dialog,
             NSLayoutAttributeHeight,
@@ -199,6 +201,7 @@ class FastScripts(PalettePlugin):
                 self,
             )
             self.init_button(script_button, button_script)
+            script_button.setLineBreakMode_(NSLineBreakByTruncatingTail)
             self.buttonContainer.addSubview_(script_button)
             remove_button = removeButton(
                 NSMakeRect(width - 16, height - button_start - 17, 18, 18),

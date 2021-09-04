@@ -58,6 +58,7 @@ def newButton(frame, title, action, target):
         button_height,
     )
     new_button.addConstraint_(constraint)
+    new_button.setContentCompressionResistancePriority_forOrientation_(100, NSLayoutConstraintOrientationHorizontal)
     return new_button
 
 

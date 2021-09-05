@@ -20,6 +20,7 @@ from AppKit import (
     NSLayoutAttributeBottom,
     NSLayoutRelationEqual,
     NSLineBreakByTruncatingTail,
+    NSLayoutConstraintOrientationHorizontal
 )
 import re
 import io

@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from __future__ import division, print_function, unicode_literals
+from ast import excepthandler
 import objc
 from GlyphsApp import *
 from GlyphsApp.plugins import *
@@ -22,8 +23,15 @@ from AppKit import (
     NSLayoutRelationEqual,
     NSLineBreakByTruncatingTail,
 	NSLayoutConstraintOrientationHorizontal,
-    NSBezelStyleRecessed,
 )
+
+try:
+    from AppKit import NSBezelStyleRecessed
+    hasRecessedStyleImported = True
+except:
+    hasRecessedStyleImported = False
+
+
 import re
 import io
 import os
@@ -37,15 +45,18 @@ except:
         GSGlyphsInfo.applicationSupportFolder() + "/Scripts"
     )  # Glyphs 2
 
-button_height = 18
-button_gap = 1
+button_height = 18 if hasRecessedStyleImported else 14 # I think these have no impact anymore
+button_gap = 1 if hasRecessedStyleImported else 4      # I think these have no impact anymore
 defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
 notificationName = "com.ViktorRubenko.FastScripts.reload"
 
 
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
-    new_button.setBezelStyle_(NSBezelStyleRecessed) # NSShadowlessSquareBezelStyle is deprecated
+    if hasRecessedStyleImported:
+        new_button.setBezelStyle_(NSBezelStyleRecessed)
+    else:
+        new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
     new_button.setControlSize_(NSMiniControlSize)
     new_button.setTitle_(title)
     new_button.setFont_(NSFont.systemFontOfSize_(10))

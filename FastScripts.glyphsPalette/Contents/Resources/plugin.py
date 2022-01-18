@@ -8,6 +8,7 @@ if int(Glyphs.versionNumber) == 3:
     from GlyphsApp import GSMouseOverButton, GSScriptingHandler
 from AppKit import (
     NSButton,
+    NSFont,
     NSMiniControlSize,
     NSShadowlessSquareBezelStyle,
     NSCircularBezelStyle,
@@ -20,7 +21,8 @@ from AppKit import (
     NSLayoutAttributeBottom,
     NSLayoutRelationEqual,
     NSLineBreakByTruncatingTail,
-    NSLayoutConstraintOrientationHorizontal
+	NSLayoutConstraintOrientationHorizontal,
+    NSBezelStyleRecessed,
 )
 import re
 import io
@@ -35,17 +37,18 @@ except:
         GSGlyphsInfo.applicationSupportFolder() + "/Scripts"
     )  # Glyphs 2
 
-button_height = 14
-button_gap = 4
+button_height = 18
+button_gap = 1
 defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
 notificationName = "com.ViktorRubenko.FastScripts.reload"
 
 
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
-    new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
+    new_button.setBezelStyle_(NSBezelStyleRecessed) # NSShadowlessSquareBezelStyle is deprecated
     new_button.setControlSize_(NSMiniControlSize)
     new_button.setTitle_(title)
+    new_button.setFont_(NSFont.systemFontOfSize_(10))
     new_button.setAction_(action)
     new_button.setTarget_(target)
     new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)

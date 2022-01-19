@@ -97,7 +97,7 @@ def removeButton(frame, imageName, action, target):
         None,
         0,
         1.0,
-        18,
+        button_height,
     )
     new_button.addConstraint_(constraint)
     constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
@@ -219,7 +219,7 @@ class FastScripts(PalettePlugin):
             script_button.setLineBreakMode_(NSLineBreakByTruncatingTail)
             self.buttonContainer.addSubview_(script_button)
             remove_button = removeButton(
-                NSMakeRect(width - 16, height - button_start - 17, 18, 18),
+                NSMakeRect(width - 16, height - button_start - 15, button_height, 18),
                 "NSRemoveTemplate",
                 self.removeScriptCallback_,
                 self,

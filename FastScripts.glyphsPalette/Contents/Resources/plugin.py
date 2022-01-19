@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from __future__ import division, print_function, unicode_literals
+from ast import excepthandler
 import objc
 from GlyphsApp import *
 from GlyphsApp.plugins import *
@@ -8,6 +9,7 @@ if int(Glyphs.versionNumber) == 3:
     from GlyphsApp import GSMouseOverButton, GSScriptingHandler
 from AppKit import (
     NSButton,
+    NSFont,
     NSMiniControlSize,
     NSShadowlessSquareBezelStyle,
     NSCircularBezelStyle,
@@ -20,8 +22,16 @@ from AppKit import (
     NSLayoutAttributeBottom,
     NSLayoutRelationEqual,
     NSLineBreakByTruncatingTail,
-    NSLayoutConstraintOrientationHorizontal
+	NSLayoutConstraintOrientationHorizontal,
 )
+
+try:
+    from AppKit import NSBezelStyleRecessed
+    hasRecessedStyleImported = True
+except:
+    hasRecessedStyleImported = False
+
+
 import re
 import io
 import os
@@ -35,17 +45,21 @@ except:
         GSGlyphsInfo.applicationSupportFolder() + "/Scripts"
     )  # Glyphs 2
 
-button_height = 14
-button_gap = 4
+button_height = 18 if hasRecessedStyleImported else 14 # I think these have no impact anymore
+button_gap = 1 if hasRecessedStyleImported else 4      # I think these have no impact anymore
 defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
 notificationName = "com.ViktorRubenko.FastScripts.reload"
 
 
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
-    new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
+    if hasRecessedStyleImported:
+        new_button.setBezelStyle_(NSBezelStyleRecessed)
+    else:
+        new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
     new_button.setControlSize_(NSMiniControlSize)
     new_button.setTitle_(title)
+    new_button.setFont_(NSFont.systemFontOfSize_(10))
     new_button.setAction_(action)
     new_button.setTarget_(target)
     new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)

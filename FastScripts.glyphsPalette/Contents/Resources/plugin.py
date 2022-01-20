@@ -26,7 +26,7 @@ from AppKit import (
 )
 
 try:
-    from AppKit import NSBezelStyleRecessed
+    from AppKit import NSBezelStyleRecessed, NSButtonTypeMomentaryLight
     hasRecessedStyleImported = True
 except:
     hasRecessedStyleImported = False
@@ -35,6 +35,7 @@ except:
 import re
 import io
 import os
+import platform
 
 try:
     scriptsPath = (
@@ -54,7 +55,10 @@ notificationName = "com.ViktorRubenko.FastScripts.reload"
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
     if hasRecessedStyleImported:
-        new_button.setBezelStyle_(NSBezelStyleRecessed)
+        osVersion = int(platform.mac_ver()[0].split(".")[0])
+        if osVersion >= 10: # NSBezelStyleRecessed looks oddly dark in macOS 10.
+            new_button.setBezelStyle_(NSBezelStyleRecessed)
+            new_button.setButtonType_(NSButtonTypeMomentaryLight)
     else:
         new_button.setBezelStyle_(NSShadowlessSquareBezelStyle)
     new_button.setControlSize_(NSMiniControlSize)

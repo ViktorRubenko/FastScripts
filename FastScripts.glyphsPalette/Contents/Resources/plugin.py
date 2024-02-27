@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 from __future__ import division, print_function, unicode_literals
-from ast import excepthandler
-import objc
-from GlyphsApp import *
-from GlyphsApp.plugins import *
 
-if int(Glyphs.versionNumber) == 3:
-    from GlyphsApp import GSMouseOverButton, GSScriptingHandler
+
+import re
+import io
+import os
+import platform
+import objc
 from AppKit import (
     NSButton,
     NSFont,
@@ -22,20 +22,28 @@ from AppKit import (
     NSLayoutAttributeBottom,
     NSLayoutRelationEqual,
     NSLineBreakByTruncatingTail,
-	NSLayoutConstraintOrientationHorizontal,
+    NSLayoutConstraintOrientationHorizontal,
+    NSImage,
+    NSView,
+    NSNotificationCenter,
+    NSMakeRect
 )
-
 try:
     from AppKit import NSBezelStyleRecessed, NSButtonTypeMomentaryLight
     hasRecessedStyleImported = True
 except:
     hasRecessedStyleImported = False
 
+from GlyphsApp import Glyphs, GSGlyphsInfo, GetOpenFile, objcObject
+from GlyphsApp.plugins import PalettePlugin
 
-import re
-import io
-import os
-import platform
+if int(Glyphs.versionNumber) == 3:
+    GSMouseOverButton = objc.lookUpClass("GSMouseOverButton")
+    GSScriptingHandler = objc.lookUpClass("GSScriptingHandler")
+else:
+    GSMouseOverButton = NSButton
+    GSScriptingHandler = objc.lookUpClass("GSMenu")
+
 
 try:
     scriptsPath = (
@@ -46,8 +54,8 @@ except:
         GSGlyphsInfo.applicationSupportFolder() + "/Scripts"
     )  # Glyphs 2
 
-button_height = 18 if hasRecessedStyleImported else 14 # I think these have no impact anymore
-button_gap = 1 if hasRecessedStyleImported else 4      # I think these have no impact anymore
+button_height = 18 if hasRecessedStyleImported else 14  # I think these have no impact anymore
+button_gap = 1 if hasRecessedStyleImported else 4       # I think these have no impact anymore
 defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
 notificationName = "com.ViktorRubenko.FastScripts.reload"
 
@@ -56,7 +64,7 @@ def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
     if hasRecessedStyleImported:
         osVersion = int(platform.mac_ver()[0].split(".")[0])
-        if osVersion >= 10: # NSBezelStyleRecessed looks oddly dark in macOS 10.
+        if osVersion >= 10:  # NSBezelStyleRecessed looks oddly dark in macOS 10.
             new_button.setBezelStyle_(NSBezelStyleRecessed)
             new_button.setButtonType_(NSButtonTypeMomentaryLight)
     else:
@@ -82,10 +90,7 @@ def newButton(frame, title, action, target):
 
 
 def removeButton(frame, imageName, action, target):
-    if int(Glyphs.versionNumber) == 2:
-        new_button = NSButton.alloc().initWithFrame_(frame)
-    else:
-        new_button = GSMouseOverButton.alloc().initWithFrame_(frame)
+    new_button = GSMouseOverButton.alloc().initWithFrame_(frame)
     new_button.setBezelStyle_(NSCircularBezelStyle)
     new_button.setBordered_(False)
     new_button.setImage_(NSImage.imageNamed_(imageName))
@@ -284,13 +289,9 @@ class FastScripts(PalettePlugin):
         )
 
     def runScriptCallback_(self, button):
-        if int(Glyphs.versionNumber) == 3:
-            scriptPath = button.representedObject()
-            scriptHandler = GSScriptingHandler.alloc()
-            scriptHandler.runMacroFile_(scriptPath)
-        else:
-            code = button.representedObject()
-            exec(code, globals())
+        scriptPath = button.representedObject()
+        scriptHandler = GSScriptingHandler.alloc()
+        scriptHandler.runMacroFile_(scriptPath)
 
     def removeScriptCallback_(self, button):
         self.button_scripts.remove(button.representedObject())
@@ -299,14 +300,14 @@ class FastScripts(PalettePlugin):
     def addScript_(self, sender):
         try:
             filepaths = GetOpenFile(
-                path=scriptsPath,
+                path=objcObject(scriptsPath),
                 filetypes=["py"],
                 allowsMultipleSelection=True,
             )
         except:
             import traceback
-
             print(traceback.format_exc())
+
         if not filepaths or len(filepaths) == 0:
             return
         self.button_scripts.extend(filepaths)
@@ -323,27 +324,7 @@ class FastScripts(PalettePlugin):
             if not menu_title:
                 return
 
-            if int(Glyphs.versionNumber) == 2:
-                code = code.splitlines()
-                main_code = False
-                for line_index, line in enumerate(code):
-                    if line.startswith("#") and "utf" in line:
-                        code[line_index] = ""
-                        continue
-                    if "__main__" in line:
-                        code[line_index] = ""
-                        main_code = True
-                        continue
-                    if main_code:
-                        if line.startswith("\t"):
-                            rep = "\t"
-                        else:
-                            rep = "    "
-                        code[line_index] = line.replace(rep, "", 1)
-                code = "\n".join(code)
-                button.setRepresentedObject_(code)
-            else:
-                button.setRepresentedObject_(script_path)
+            button.setRepresentedObject_(script_path)
 
             menu_title = menu_title[0]
             button.setTitle_(menu_title)

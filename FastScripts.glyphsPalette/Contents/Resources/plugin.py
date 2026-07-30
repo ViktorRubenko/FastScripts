@@ -26,7 +26,9 @@ from AppKit import (
     NSImage,
     NSView,
     NSNotificationCenter,
-    NSMakeRect
+    NSMakeRect,
+    NSOpenPanel,
+    NSModalResponseOK,
 )
 try:
     from AppKit import NSBezelStyleRecessed, NSButtonTypeMomentaryLight
@@ -34,10 +36,10 @@ try:
 except:
     hasRecessedStyleImported = False
 
-from GlyphsApp import Glyphs, GSGlyphsInfo, GetOpenFile, objcObject
+from GlyphsApp import Glyphs, GSGlyphsInfo
 from GlyphsApp.plugins import PalettePlugin
 
-if int(Glyphs.versionNumber) == 3:
+if int(Glyphs.versionNumber) >= 3:
     GSMouseOverButton = objc.lookUpClass("GSMouseOverButton")
     GSScriptingHandler = objc.lookUpClass("GSScriptingHandler")
 else:
@@ -60,6 +62,15 @@ defaultsName = "com.ViktorRubenko.FastScripts.button_scripts"
 notificationName = "com.ViktorRubenko.FastScripts.reload"
 
 
+def add_constraint(owner, item, attribute, other=None, other_attribute=0, multiplier=1.0, constant=0):
+    """Build an NSLayoutConstraint (item.attribute = multiplier * other.attribute + constant) and add it to owner."""
+    owner.addConstraint_(
+        NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
+            item, attribute, NSLayoutRelationEqual, other, other_attribute, multiplier, constant
+        )
+    )
+
+
 def newButton(frame, title, action, target):
     new_button = NSButton.alloc().initWithFrame_(frame)
     if hasRecessedStyleImported:
@@ -75,16 +86,7 @@ def newButton(frame, title, action, target):
     new_button.setAction_(action)
     new_button.setTarget_(target)
     new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)
-    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-        new_button,
-        NSLayoutAttributeHeight,
-        NSLayoutRelationEqual,
-        None,
-        0,
-        1.0,
-        button_height,
-    )
-    new_button.addConstraint_(constraint)
+    add_constraint(new_button, new_button, NSLayoutAttributeHeight, constant=button_height)
     new_button.setContentCompressionResistancePriority_forOrientation_(100, NSLayoutConstraintOrientationHorizontal)
     return new_button
 
@@ -99,26 +101,8 @@ def removeButton(frame, imageName, action, target):
     new_button.setAction_(action)
     new_button.setTarget_(target)
     new_button.setTranslatesAutoresizingMaskIntoConstraints_(False)
-    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-        new_button,
-        NSLayoutAttributeHeight,
-        NSLayoutRelationEqual,
-        None,
-        0,
-        1.0,
-        button_height,
-    )
-    new_button.addConstraint_(constraint)
-    constraint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-        new_button,
-        NSLayoutAttributeWidth,
-        NSLayoutRelationEqual,
-        None,
-        0,
-        1.0,
-        18,
-    )
-    new_button.addConstraint_(constraint)
+    add_constraint(new_button, new_button, NSLayoutAttributeHeight, constant=button_height)
+    add_constraint(new_button, new_button, NSLayoutAttributeWidth, constant=18)
     return new_button
 
 
@@ -146,46 +130,14 @@ class FastScripts(PalettePlugin):
             False
         )
         self.dialog.addSubview_(self.buttonContainer)
-        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-            self.dialog,
-            NSLayoutAttributeTop,
-            NSLayoutRelationEqual,
-            self.buttonContainer,
-            NSLayoutAttributeTop,
-            1.0,
-            0,
-        )
-        self.dialog.addConstraint_(constaint)
-        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-            self.dialog,
-            NSLayoutAttributeLeading,
-            NSLayoutRelationEqual,
-            self.buttonContainer,
-            NSLayoutAttributeLeading,
-            1.0,
-            0,
-        )
-        self.dialog.addConstraint_(constaint)
-        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-            self.dialog,
-            NSLayoutAttributeTrailing,
-            NSLayoutRelationEqual,
-            self.buttonContainer,
-            NSLayoutAttributeTrailing,
-            1.0,
-            0,
-        )
-        self.dialog.addConstraint_(constaint)
-        constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-            self.dialog,
-            NSLayoutAttributeBottom,
-            NSLayoutRelationEqual,
-            self.buttonContainer,
-            NSLayoutAttributeBottom,
-            1.0,
-            15,
-        )
-        self.dialog.addConstraint_(constaint)
+        # Pin buttonContainer to fill dialog (bottom leaves room for the add button row).
+        for attribute, offset in (
+            (NSLayoutAttributeTop, 0),
+            (NSLayoutAttributeLeading, 0),
+            (NSLayoutAttributeTrailing, 0),
+            (NSLayoutAttributeBottom, 15),
+        ):
+            add_constraint(self.dialog, self.dialog, attribute, self.buttonContainer, attribute, constant=offset)
         self.add_button = removeButton(
             NSMakeRect(8, 0, 18, 18),
             "NSAddTemplate",
@@ -209,9 +161,10 @@ class FastScripts(PalettePlugin):
         quantity = len(self.button_scripts)
         width, height = 160, quantity * (button_height + button_gap)
         self.heightConstraint.setConstant_(height + 15)
+        for subview in list(self.buttonContainer.subviews()):
+            subview.removeFromSuperview()
         if quantity == 0:
             return
-        self.buttonContainer.setSubviews_([])
         for button_script in self.button_scripts:
             script_button = newButton(
                 NSMakeRect(
@@ -235,36 +188,10 @@ class FastScripts(PalettePlugin):
             )
             remove_button.setRepresentedObject_(button_script)
             self.buttonContainer.addSubview_(remove_button)
-            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-                script_button,
-                NSLayoutAttributeLeading,
-                NSLayoutRelationEqual,
-                self.buttonContainer,
-                NSLayoutAttributeLeading,
-                1.0,
-                8,
-            )
-            self.buttonContainer.addConstraint_(constaint)
-            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-                script_button,
-                NSLayoutAttributeTrailing,
-                NSLayoutRelationEqual,
-                remove_button,
-                NSLayoutAttributeLeading,
-                1.0,
-                -2,
-            )
-            self.buttonContainer.addConstraint_(constaint)
-            constaint = NSLayoutConstraint.constraintWithItem_attribute_relatedBy_toItem_attribute_multiplier_constant_(
-                remove_button,
-                NSLayoutAttributeTrailing,
-                NSLayoutRelationEqual,
-                self.buttonContainer,
-                NSLayoutAttributeTrailing,
-                1.0,
-                -8,
-            )
-            self.buttonContainer.addConstraint_(constaint)
+            # script_button fills the row, remove_button sits flush at the trailing edge.
+            add_constraint(self.buttonContainer, script_button, NSLayoutAttributeLeading, self.buttonContainer, NSLayoutAttributeLeading, constant=8)
+            add_constraint(self.buttonContainer, script_button, NSLayoutAttributeTrailing, remove_button, NSLayoutAttributeLeading, constant=-2)
+            add_constraint(self.buttonContainer, remove_button, NSLayoutAttributeTrailing, self.buttonContainer, NSLayoutAttributeTrailing, constant=-8)
             button_start += button_height + button_gap
         self.dialog.invalidateIntrinsicContentSize()
 
@@ -290,20 +217,27 @@ class FastScripts(PalettePlugin):
 
     def runScriptCallback_(self, button):
         scriptPath = button.representedObject()
-        scriptHandler = GSScriptingHandler.alloc()
-        scriptHandler.runMacroFile_(scriptPath)
+        if int(Glyphs.versionNumber) >= 4:
+            GSScriptingHandler.runScriptFile_filePath_(scriptPath, scriptPath)
+        else:
+            GSScriptingHandler.alloc().runMacroFile_(scriptPath)
 
     def removeScriptCallback_(self, button):
         self.button_scripts.remove(button.representedObject())
         self.dataHasChanged()
 
     def addScript_(self, sender):
+        filepaths = None
         try:
-            filepaths = GetOpenFile(
-                path=objcObject(scriptsPath),
-                filetypes=["py"],
-                allowsMultipleSelection=True,
-            )
+            panel = NSOpenPanel.new()
+            panel.setCanChooseFiles_(True)
+            panel.setCanChooseDirectories_(False)
+            panel.setCanCreateDirectories_(True)
+            panel.setAllowsMultipleSelection_(True)
+            panel.setDirectory_(scriptsPath)
+            panel.setAllowedFileTypes_(["py"])
+            if panel.runModal() == NSModalResponseOK:
+                filepaths = list(panel.filenames())
         except:
             import traceback
             print(traceback.format_exc())
